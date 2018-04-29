@@ -1,0 +1,38 @@
+# Speed Options
+dist: trusty
+sudo: false
+
+language: generic
+
+env:
+  - PATH="$PATH:$HOME/.local/bin"
+
+cache:
+  directories:
+    - $HOME/.local/bin
+    - $HOME/.ghc
+    - $HOME/.cabal
+    - $HOME/.stack
+
+addons:
+  apt:
+    packages:
+      - libgmp-dev
+
+before_install:
+  - mkdir -p ~/.local/bin
+  - travis_retry curl -L https://www.stackage.org/stack/linux-x86_64 | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
+
+install:
+  - stack setup
+  - stack install hlint
+  - stack install doctest
+
+script:
+  - stack test
+  - stack exec -- hlint src app
+  - stack exec -- doctest src app
+
+branches:
+  only:
+    - master
