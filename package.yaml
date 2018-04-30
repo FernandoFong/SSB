@@ -21,6 +21,10 @@ description:         Please see the README on GitHub at <https://github.com/gith
 
 dependencies:
 - base >= 4.7 && < 5
+- bytestring >= 0.10 && < 1
+- memory >= 0.14 && < 1
+- base64-bytestring >= 1.0.0.1 && < 2
+- cryptonite >= 0.25 && < 1
 
 library:
   source-dirs: src
