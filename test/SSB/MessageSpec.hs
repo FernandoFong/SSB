@@ -7,11 +7,14 @@ import Data.ByteString
 import Data.Aeson
 
 import SSB.Message
+import SSB.Message.Post
 
 main :: IO ()
 main = hspec spec
 
 spec = do
-  describe "Decode should be an identity on messages" $ do
+  describe "Decode should be a left inverse of encode identity on messages" $ do
     it "ByteString" $ property $
       \msg -> (decode . encode) msg == Just (msg :: Message ByteString)
+    it "Post" $ property $
+      \msg -> (decode . encode) msg == Just (msg :: Message Post)

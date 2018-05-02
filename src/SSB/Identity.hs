@@ -21,15 +21,18 @@ import Crypto.Random.Types
 
 import Test.QuickCheck
 
-data Identity = Identity (Maybe SecretKey) PublicKey deriving (Generic, Show)
+data Identity = Identity {
+    sk :: Maybe SecretKey
+  , pk :: PublicKey
+  } deriving (Generic, Show)
 
 instance Eq Identity where
-  (Identity _ pk) == (Identity _ pk') = pk == pk'
+  id1 == id2 = pk id1 == pk id2
 
 instance Arbitrary Identity where
   arbitrary = do
-    sk <- generateSecretKey
-    return $ Identity (Just sk) (toPublic sk)
+    skey <- generateSecretKey
+    return Identity {sk = Just skey, pk = toPublic skey}
 
 instance ToJSON Identity where
   toJSON identity = String $ T.pack $ prettyPrint identity
@@ -41,15 +44,14 @@ instance FromJSON Identity where
 
 -- | prettyPrint Identity. @{base64(PublicKey)}.ed25519
 -- | Example: @+DOl55sJo1wBqWtRuI3otubyE4M24q34X4wikX+7BXg=.ed25519
---
--- >>> sk <- generateSecretKey
--- >>> prettyPrint (Identity (Just sk) (toPublic sk))
--- ...
 prettyPrint :: Identity -> String
 prettyPrint (Identity _ pk) = "@" ++ encodedPubKey ++ ".ed25519"
   where encodedPubKey = BS.UTF8.toString (B64.encode $ BS.pack $ BA.unpack pk)
 
-
+-- | parseIdentity Identity. @{base64(PublicKey)}.ed25519
+--
+-- Will only get public key for an identity.
+-- Example: @+DOl55sJo1wBqWtRuI3otubyE4M24q34X4wikX+7BXg=.ed25519
 parseIdentity :: String -> Maybe Identity
 parseIdentity str = if "@" `L.isPrefixOf` str && ".ed25519" `L.isSuffixOf` str then
                       let encPKStr = L.take (L.length str - 9) . L.drop 1 $ str in
