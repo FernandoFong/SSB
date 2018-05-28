@@ -5,16 +5,23 @@ module SSB.Message where
 import GHC.Generics
 
 import Data.Semigroup
+import Data.Maybe (fromJust)
 
 import Data.Char
-import Data.ByteString
-import Data.ByteString.UTF8
+import Data.ByteString        as BS
+import Data.ByteString.Lazy (toStrict)
+import Data.ByteString.UTF8   as BSUTF8
+import Data.ByteArray         as BA
+
 import Data.Text              as T
 import Data.Text.Encoding     as T.Enc
 
 import Data.Time.Clock.System
 
 import Data.Aeson
+
+import Crypto.Error
+import Crypto.PubKey.Ed25519 as Crypto
 
 import Test.QuickCheck
 
@@ -46,19 +53,19 @@ instance Arbitrary a => Arbitrary (Message a) where
     c   <- arbitrary
     sig <- arbitrary
     return Message {previous = p, author = a, SSB.Message.sequence = s,
-                    timestamp = ts, hash = h, content = c, signature = sig}
+                    timestamp = ts, hash = h, content = c, SSB.Message.signature = sig}
 
 --
 -- | JSON Conversions.
 --
 instance (ToJSON a) => ToJSON (Message a) where
-    toEncoding msg = pairs (T.pack "previous"  .= (toJSON . previous             $ msg) <>
-                            T.pack "author"    .= (toJSON . author               $ msg) <>
-                            T.pack "sequence"  .= (toJSON . SSB.Message.sequence $ msg) <>
-                            T.pack "timestamp" .= (toJSON . timestamp            $ msg) <>
-                            T.pack "hash"      .= (toJSON . hash                 $ msg) <>
-                            T.pack "content"   .= (toJSON . content              $ msg) <>
-                            T.pack "signature" .= (toJSON . signature            $ msg)
+    toEncoding msg = pairs (T.pack "previous"  .= (toJSON . previous              $ msg) <>
+                            T.pack "author"    .= (toJSON . author                $ msg) <>
+                            T.pack "sequence"  .= (toJSON . SSB.Message.sequence  $ msg) <>
+                            T.pack "timestamp" .= (toJSON . timestamp             $ msg) <>
+                            T.pack "hash"      .= (toJSON . hash                  $ msg) <>
+                            T.pack "content"   .= (toJSON . content               $ msg) <>
+                            T.pack "signature" .= (toJSON . SSB.Message.signature $ msg)
                            )
 
 instance (FromJSON a) => FromJSON (Message a)
@@ -81,3 +88,10 @@ instance ToJSON ByteString where
 
 instance FromJSON ByteString where
   parseJSON = withText "ByteString" $ \bs -> pure $ encodeUtf8 bs
+
+verifyMessage :: ToJSON a => Message a -> Maybe Bool
+verifyMessage m = do
+  sig <- maybeCryptoError . Crypto.signature . fromJust . SSB.Message.signature $ m
+  return $ verify pubkey (toStrict . encode $ m) sig
+    where
+      pubkey  = pk . author $ m
