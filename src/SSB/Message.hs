@@ -79,19 +79,22 @@ instance (FromJSON a) => FromJSON (Message a)
 signMessage :: ToJSON a => Message a -> Maybe (Message a)
 signMessage m = do
   seckey <- sk . author $ m
-  let sig = B64.encode . convert $ sign seckey pubkey (SSB.Message.encode m) :: ByteString
+  let sig = B64.encode . convert $
+            sign seckey pubkey (SSB.Message.encode m') :: ByteString
   return $ m {SSB.Message.signature = Just sig}
   where
     pubkey = pk . author $ m
+    m' = m {SSB.Message.signature = Nothing}
 
 verifyMessage :: ToJSON a => Message a -> Maybe Bool
 verifyMessage m = do
   msgSig <- SSB.Message.signature m
   let decSig = fromRight (fromString "") . B64.decode $ msgSig
   sig <- maybeCryptoError . Crypto.signature $ decSig
-  return $ verify pubkey (SSB.Message.encode m) sig
-    where
-      pubkey = pk . author $ m
+  return $ verify pubkey (SSB.Message.encode m') sig
+  where
+    pubkey = pk . author $ m
+    m' = m {SSB.Message.signature = Nothing}
 
 
 

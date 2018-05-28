@@ -18,3 +18,13 @@ spec = do
       \msg -> (decodeStrict . SSB.Message.encode) msg == Just (msg :: Message ByteString)
     it "Post" $ property $
       \msg -> (decodeStrict . SSB.Message.encode) msg == Just (msg :: Message Post)
+  describe "Signing a message should be verifiable" $ do
+    it "ByteString" $ property $
+      \msg -> (signMessage (msg :: Message ByteString) >>= verifyMessage) == Just True
+    it "Post" $ property $
+      \msg -> (signMessage (msg :: Message Post) >>= verifyMessage) == Just True
+  describe "Signing again should yield the same signature" $ do
+    it "ByteString" $ property $
+      \msg -> (signMessage msg >>= signMessage) == signMessage (msg :: Message ByteString)
+    it "Post" $ property $
+      \msg -> (signMessage msg >>= signMessage) == signMessage (msg :: Message ByteString)
