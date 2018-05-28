@@ -4,13 +4,15 @@ module SSB.Message where
 
 import GHC.Generics
 
-import Data.Semigroup
-import Data.Maybe (fromJust)
+import Data.Semigroup ((<>))
+import Data.Maybe (isJust, fromJust)
+import Data.Either (fromRight)
 
 import Data.Char
 import Data.ByteString        as BS
 import Data.ByteString.Lazy (toStrict)
 import Data.ByteString.UTF8   as BSUTF8
+import Data.ByteString.Base64 as B64
 import Data.ByteArray         as BA
 
 import Data.Text              as T
@@ -19,6 +21,7 @@ import Data.Text.Encoding     as T.Enc
 import Data.Time.Clock.System
 
 import Data.Aeson
+import Data.Aeson.Encode.Pretty
 
 import Crypto.Error
 import Crypto.PubKey.Ed25519 as Crypto
@@ -43,37 +46,71 @@ data Message a = Message {
 --
 -- | Arbitrary Message a. For use with QuickCheck
 --
-instance Arbitrary a => Arbitrary (Message a) where
+instance (ToJSON a, Arbitrary a) => Arbitrary (Message a) where
   arbitrary = do
-    p   <- arbitrary
     a   <- arbitrary
-    s   <- arbitrary
     ts  <- arbitrary
-    h   <- arbitrary
     c   <- arbitrary
-    sig <- arbitrary
-    return Message {previous = p, author = a, SSB.Message.sequence = s,
-                    timestamp = ts, hash = h, content = c, SSB.Message.signature = sig}
+    let m = Message {previous = Nothing, author = a, SSB.Message.sequence = 0,
+                     timestamp = ts, hash = fromString "sha256", content = c, SSB.Message.signature = Nothing}
+    return . fromJust $ signMessage m
 
 --
 -- | JSON Conversions.
 --
 instance (ToJSON a) => ToJSON (Message a) where
-    toEncoding msg = pairs (T.pack "previous"  .= (toJSON . previous              $ msg) <>
-                            T.pack "author"    .= (toJSON . author                $ msg) <>
-                            T.pack "sequence"  .= (toJSON . SSB.Message.sequence  $ msg) <>
-                            T.pack "timestamp" .= (toJSON . timestamp             $ msg) <>
-                            T.pack "hash"      .= (toJSON . hash                  $ msg) <>
-                            T.pack "content"   .= (toJSON . content               $ msg) <>
-                            T.pack "signature" .= (toJSON . SSB.Message.signature $ msg)
-                           )
+    toEncoding m | isJust sig = pairs (defaultMessage <> T.pack "signature" .= toJSON sig)
+                 | otherwise  = pairs defaultMessage
+                   where
+                     sig = SSB.Message.signature m
+                     defaultMessage = T.pack "previous"  .= (toJSON . previous              $ m) <>
+                                      T.pack "author"    .= (toJSON . author                $ m) <>
+                                      T.pack "sequence"  .= (toJSON . SSB.Message.sequence  $ m) <>
+                                      T.pack "timestamp" .= (toJSON . timestamp             $ m) <>
+                                      T.pack "hash"      .= (toJSON . hash                  $ m) <>
+                                      T.pack "content"   .= (toJSON . content               $ m)
 
 instance (FromJSON a) => FromJSON (Message a)
     -- No need to provide a parseJSON implementation.
 
 --
+-- | Message Signature and Verification.
+--
+signMessage :: ToJSON a => Message a -> Maybe (Message a)
+signMessage m = do
+  seckey <- sk . author $ m
+  let sig = B64.encode . convert $ sign seckey pubkey (SSB.Message.encode m) :: ByteString
+  return $ m {SSB.Message.signature = Just sig}
+  where
+    pubkey = pk . author $ m
+
+verifyMessage :: ToJSON a => Message a -> Maybe Bool
+verifyMessage m = do
+  msgSig <- SSB.Message.signature m
+  let decSig = fromRight (fromString "") . B64.decode $ msgSig
+  sig <- maybeCryptoError . Crypto.signature $ decSig
+  return $ verify pubkey (SSB.Message.encode m) sig
+    where
+      pubkey = pk . author $ m
+
+
+
+-- Generic Configurations
+
+encode :: ToJSON a => a -> ByteString
+encode = toStrict . encodePretty' confPPSSB
+
+confPPSSB = Config { confIndent = Spaces 2,
+                     confCompare = mempty,
+                     confNumFormat = Generic,
+                     confTrailingNewline = False }
+
+
+
+--
 -- TODO: Move to specific module
 --
+
 instance Arbitrary ByteString where
   arbitrary = fromString . Prelude.filter isAlpha . getPrintableString <$> (arbitrary :: Gen PrintableString)
 
@@ -88,10 +125,3 @@ instance ToJSON ByteString where
 
 instance FromJSON ByteString where
   parseJSON = withText "ByteString" $ \bs -> pure $ encodeUtf8 bs
-
-verifyMessage :: ToJSON a => Message a -> Maybe Bool
-verifyMessage m = do
-  sig <- maybeCryptoError . Crypto.signature . fromJust . SSB.Message.signature $ m
-  return $ verify pubkey (toStrict . encode $ m) sig
-    where
-      pubkey  = pk . author $ m

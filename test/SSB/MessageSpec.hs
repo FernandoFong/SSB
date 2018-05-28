@@ -15,6 +15,6 @@ main = hspec spec
 spec = do
   describe "Decode should be a left inverse of encode identity on messages" $ do
     it "ByteString" $ property $
-      \msg -> (decode . encode) msg == Just (msg :: Message ByteString)
+      \msg -> (decodeStrict . SSB.Message.encode) msg == Just (msg :: Message ByteString)
     it "Post" $ property $
-      \msg -> (decode . encode) msg == Just (msg :: Message Post)
+      \msg -> (decodeStrict . SSB.Message.encode) msg == Just (msg :: Message Post)
