@@ -42,6 +42,7 @@ dependencies:
 
 # ORM
 - persistent
+- persistent-sqlite
 
 # Test
 - QuickCheck        >= 2.10.1  && < 3

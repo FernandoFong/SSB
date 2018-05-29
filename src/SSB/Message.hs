@@ -1,4 +1,4 @@
- {-# LANGUAGE DeriveGeneric #-}
+ {-# LANGUAGE DeriveGeneric, TypeFamilies, GeneralizedNewtypeDeriving, OverloadedStrings, GADTs  #-}
 
 module SSB.Message where
 
@@ -26,6 +26,9 @@ import Data.Aeson.Encode.Pretty
 import Crypto.Error
 import Crypto.Hash
 import Crypto.PubKey.Ed25519 as Crypto
+
+import Database.Persist
+import Database.Persist.Sqlite
 
 import Test.QuickCheck
 
@@ -74,6 +77,26 @@ instance (ToJSON a) => ToJSON (Message a) where
 
 instance (FromJSON a) => FromJSON (Message a)
     -- No need to provide a parseJSON implementation.
+
+instance (PersistEntity a, FromJSON a, ToJSON a) => PersistEntity (Message a) where
+  newtype Key (Message a) =  MessageKey (BackendKey SqlBackend)
+    deriving (PersistField, Show, Eq, Read, Ord)
+  data EntityField (Message a) msg where
+    MessagePrevious :: EntityField (Message a) (Maybe ByteString)
+    MessageAuthor :: EntityField (Message a) Identity
+    MessageSequence :: EntityField (Message a) Integer
+    MessageTimestamp :: EntityField (Message a) DotNetTime
+    MessageHash :: EntityField (Message a) ByteString
+    MessageContent :: EntityField (Message a) a
+    MessageSignature :: EntityField (Message a) (Maybe ByteString)
+
+instance (ToJSON a, Generic a) => ToJSON (Key a) where
+  toEncoding = undefined
+
+instance (FromJSON a, Generic a) => FromJSON (Key a)
+  -- Generico
+
+instance (Generic a) => Generic (Key a)
 
 --
 -- | Message Signature and Verification.
