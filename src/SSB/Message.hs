@@ -28,6 +28,7 @@ import Crypto.PubKey.Ed25519 as Crypto
 
 import Test.QuickCheck
 
+import SSB.Misc
 import SSB.Identity
 
 --
@@ -107,24 +108,3 @@ confPPSSB = Config { confIndent = Spaces 2,
                      confCompare = mempty,
                      confNumFormat = Generic,
                      confTrailingNewline = False }
-
-
-
---
--- TODO: Move to specific module
---
-
-instance Arbitrary ByteString where
-  arbitrary = fromString . Prelude.filter isAlpha . getPrintableString <$> (arbitrary :: Gen PrintableString)
-
-instance Arbitrary DotNetTime where
-  arbitrary = do
-    time <- arbitrary :: Gen (Positive Integer)
-    let sys_time = MkSystemTime {systemSeconds = fromInteger . getPositive $ time, systemNanoseconds = 0} in
-      return DotNetTime {fromDotNetTime = systemToUTCTime sys_time}
-
-instance ToJSON ByteString where
-  toJSON bs = String $ decodeUtf8 bs
-
-instance FromJSON ByteString where
-  parseJSON = withText "ByteString" $ \bs -> pure $ encodeUtf8 bs

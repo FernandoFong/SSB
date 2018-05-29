@@ -27,4 +27,4 @@ spec = do
     it "ByteString" $ property $
       \msg -> (signMessage msg >>= signMessage) == signMessage (msg :: Message ByteString)
     it "Post" $ property $
-      \msg -> (signMessage msg >>= signMessage) == signMessage (msg :: Message ByteString)
+      \msg -> (signMessage msg >>= signMessage) == signMessage (msg :: Message Post)
