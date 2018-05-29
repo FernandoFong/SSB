@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveGeneric #-}
+ {-# LANGUAGE DeriveGeneric #-}
 
 module SSB.Message where
 
@@ -24,6 +24,7 @@ import Data.Aeson
 import Data.Aeson.Encode.Pretty
 
 import Crypto.Error
+import Crypto.Hash
 import Crypto.PubKey.Ed25519 as Crypto
 
 import Test.QuickCheck
@@ -39,7 +40,7 @@ data Message a = Message {
   , author    :: Identity   -- Public key of the feed that the message will be posted in.
   , sequence  :: Integer    -- 1 for the first message in a feed, 2 for the second and so on.
   , timestamp :: DotNetTime -- Time the message was created. Number of milliseconds since 1 January 1970 00:00 UTC.
-  , hash      :: ByteString -- The fixed string sha256, which is the hash function used to compute the message ID.
+  , hash_message      :: ByteString -- The fixed string sha256, which is the hash_message function used to compute the message ID.
   , content   :: a          -- Free-form JSON. It is up to applications to interpret what it means. It’s polite to specify a type field so that applications can easily filter out message types they don’t understand.
   , signature :: Maybe ByteString
   } deriving (Generic, Eq, Show)
@@ -53,7 +54,7 @@ instance (ToJSON a, Arbitrary a) => Arbitrary (Message a) where
     ts  <- arbitrary
     c   <- arbitrary
     let m = Message {previous = Nothing, author = a, SSB.Message.sequence = 0,
-                     timestamp = ts, hash = fromString "sha256", content = c, SSB.Message.signature = Nothing}
+                     timestamp = ts, hash_message = fromString "sha256", content = c, SSB.Message.signature = Nothing}
     return . fromJust $ signMessage m
 
 --
@@ -68,7 +69,7 @@ instance (ToJSON a) => ToJSON (Message a) where
                                       T.pack "author"    .= (toJSON . author                $ m) <>
                                       T.pack "sequence"  .= (toJSON . SSB.Message.sequence  $ m) <>
                                       T.pack "timestamp" .= (toJSON . timestamp             $ m) <>
-                                      T.pack "hash"      .= (toJSON . hash                  $ m) <>
+                                      T.pack "hash_message"      .= (toJSON . hash_message                  $ m) <>
                                       T.pack "content"   .= (toJSON . content               $ m)
 
 instance (FromJSON a) => FromJSON (Message a)
@@ -81,7 +82,7 @@ signMessage :: ToJSON a => Message a -> Maybe (Message a)
 signMessage m = do
   seckey <- sk . author $ m
   let sig = B64.encode . convert $
-            sign seckey pubkey (SSB.Message.encode m') :: ByteString
+            sign seckey pubkey (hash256 $ SSB.Message.encode m') :: ByteString
   return $ m {SSB.Message.signature = Just sig}
   where
     pubkey = pk . author $ m
@@ -92,7 +93,7 @@ verifyMessage m = do
   msgSig <- SSB.Message.signature m
   let decSig = fromRight (fromString "") . B64.decode $ msgSig
   sig <- maybeCryptoError . Crypto.signature $ decSig
-  return $ verify pubkey (SSB.Message.encode m') sig
+  return $ verify pubkey (hash256 $ SSB.Message.encode m') sig
   where
     pubkey = pk . author $ m
     m' = m {SSB.Message.signature = Nothing}
@@ -108,3 +109,6 @@ confPPSSB = Config { confIndent = Spaces 2,
                      confCompare = mempty,
                      confNumFormat = Generic,
                      confTrailingNewline = False }
+
+hash256 :: ByteString -> Digest SHA256
+hash256  = Crypto.Hash.hash 
