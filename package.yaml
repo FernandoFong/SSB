@@ -37,8 +37,7 @@ dependencies:
 - cryptonite        >= 0.25    && < 1
 
 # Networking
-- connection        >= 0.2.8   && < 1
-- connection-pool   >= 0.2.2   && < 1
+- network           >= 2.6.0   && < 3
 
 # ORM
 - persistent
