@@ -1,14 +1,38 @@
 module Main where
 
-import Control.Concurrent (forkFinally)
+import qualified Data.ByteString       as BS
+import qualified Data.ByteString.UTF8  as BS (fromString)
+import qualified Data.ByteArray as BA
 import qualified Control.Exception as E
+import Control.Concurrent (forkIO, forkFinally, threadDelay)
 import Control.Monad (unless, forever, void)
-import qualified Data.ByteString as S
-import Network.Socket hiding (recv)
-import Network.Socket.ByteString (recv, sendAll)
+import qualified Crypto.Error          as C
+import qualified Crypto.PubKey.Ed25519 as C
+import System.Directory (doesFileExist, getHomeDirectory, createDirectoryIfMissing)
+import Network.BSD (getProtocolNumber)
+import Network.Socket hiding (recv, sendTo)
+import Network.Socket.ByteString (recv, sendTo, sendAll)
+
+import SSB.Identity
 
 main :: IO ()
-main = withSocketsDo $ do
+main = do
+  home <- getHomeDirectory
+  createDirectoryIfMissing True (home ++ "/.ssb-hs/")
+  fileExists <- doesFileExist (home ++ "/.ssb-hs/secret")
+  secKey <- if fileExists
+    then do
+      secret <- BS.readFile (home ++ "/.ssb-hs/secret")
+      C.throwCryptoErrorIO $ C.secretKey secret
+    else do
+      secretKey <- C.generateSecretKey
+      BS.writeFile (home ++ "/.ssb-hs/secret") $ BA.convert secretKey
+      return secretKey
+  let pubKey = C.toPublic secKey
+  let identity = Identity {sk=Just secKey, pk = pubKey}
+  putStrLn $ prettyPrint identity
+  withSocketsDo $ do
+    forkIO $ broadcast pubKey
     addr <- resolve "8008"
     E.bracket (open addr) close loop
 
@@ -34,6 +58,15 @@ loop sock = forever $ do
 
 talk conn = do
   msg <- recv conn 1024
-  unless (S.null msg) $ do
+  unless (BS.null msg) $ do
     sendAll conn msg
     talk conn
+
+broadcast pubkey = do
+  let addr = SockAddrInet 8008 (tupleToHostAddress (255,255,255,255))
+  prot <- getProtocolNumber "udp"
+  sock <- socket AF_INET Datagram prot
+  setSocketOption sock Broadcast 1
+  forever $ do
+    sendTo sock (BA.convert pubkey) addr
+    threadDelay (1000 * 1000)
