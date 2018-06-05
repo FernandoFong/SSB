@@ -68,16 +68,16 @@ instance (A.ToJSON a, Q.Arbitrary a) => Q.Arbitrary (Message a) where
 -- | JSON Conversions.
 --
 instance (A.ToJSON a) => A.ToJSON (Message a) where
-    toEncoding m | isJust sig = A.pairs (defaultMessage <> T.pack "signature" A..= A.toJSON sig)
-                 | otherwise  = A.pairs defaultMessage
+    toJSON m = A.object $
+      [T.pack "previous"  A..= (A.toJSON . previous              $ m),
+       T.pack "author"    A..= (A.toJSON . author                $ m),
+       T.pack "sequence"  A..= (A.toJSON . SSB.Message.sequence  $ m),
+       T.pack "timestamp" A..= (A.toJSON . timestamp             $ m),
+       T.pack "hash"      A..= T.pack "sha256",
+       T.pack "content"   A..= (A.toJSON . content               $ m)] ++
+      [T.pack "signature" A..= A.toJSON sig | isJust sig]
       where
-        sig = SSB.Message.signature m
-        defaultMessage = T.pack "previous"  A..= (A.toJSON . previous              $ m) <>
-                         T.pack "author"    A..= (A.toJSON . author                $ m) <>
-                         T.pack "sequence"  A..= (A.toJSON . SSB.Message.sequence  $ m) <>
-                         T.pack "timestamp" A..= (A.toJSON . timestamp             $ m) <>
-                         T.pack "hash"      A..= (A.toJSON . hash                  $ m) <>
-                         T.pack "content"   A..= (A.toJSON . content               $ m)
+        sig = signature m
 
 instance (A.FromJSON a) => A.FromJSON (Message a)
     -- No need to provide a parseJSON implementation.
@@ -89,18 +89,18 @@ signMessage :: A.ToJSON a => Message a -> Maybe (Message a)
 signMessage m = do
   seckey <- sk . author $ m
   let sig = B64.encode . BA.convert $
-            C.sign seckey pubkey (sha256 $ encode m')
-  return $ m {SSB.Message.signature = Just sig}
+            C.sign seckey pubkey (encode m')
+  return $ m {signature = Just sig}
   where
     pubkey = pk . author $ m
-    m' = m {SSB.Message.signature = Nothing}
+    m' = m {signature = Nothing}
 
 verifyMessage :: A.ToJSON a => Message a -> Maybe Bool
 verifyMessage m = do
-  msgSig <- SSB.Message.signature m
+  msgSig <- signature m
   let decSig = fromRight (BS.fromString "") . B64.decode $ msgSig
   sig <- C.maybeCryptoError . C.signature $ decSig
-  return $ C.verify pubkey (sha256 $ SSB.Message.encode m') sig
+  return $ C.verify pubkey (encode m') sig
   where
     pubkey = pk . author $ m
     m' = m {SSB.Message.signature = Nothing}
@@ -117,7 +117,12 @@ confPPSSB = A.Config { A.confIndent = A.Spaces 2
                      , A.confNumFormat = A.Generic
                      , A.confTrailingNewline = False
                      }
-  where messageOrder = A.keyOrder . fmap T.pack $ ["previous", "author", "sequence", "timestamp", "hash", "content"]
+  where messageOrder = (A.keyOrder . fmap T.pack $ -- Message Order
+                        ["previous", "author", "sequence", "timestamp", "hash", "content", "type"]) <>
+                       (A.keyOrder . fmap T.pack $ -- Contact Order
+                        ["contact", "following", "blocking", "pub", "name"]) <>
+                       (A.keyOrder . fmap T.pack $ -- Post Order
+                        ["root", "branch", "reply", "channel", "rcps", "text"])
 
 sha256 :: BS.ByteString -> C.Digest C.SHA256
 sha256 = C.hash
