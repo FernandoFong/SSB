@@ -121,8 +121,10 @@ confPPSSB = A.Config { A.confIndent = A.Spaces 2
                         ["previous", "author", "sequence", "timestamp", "hash", "content", "type"]) <>
                        (A.keyOrder . fmap T.pack $ -- Contact Order
                         ["contact", "following", "blocking", "pub", "name"]) <>
+                       (A.keyOrder . fmap T.pack $ -- Mention Order
+                        ["link", "name"]) <>
                        (A.keyOrder . fmap T.pack $ -- Post Order
-                        ["root", "branch", "reply", "channel", "rcps", "text"])
+                        ["root", "branch", "reply", "channel", "rcps", "text", "mentions"])
 
 sha256 :: BS.ByteString -> C.Digest C.SHA256
 sha256 = C.hash

@@ -54,7 +54,7 @@ prettyPrint (Identity _ pk) = "@" ++ encodedPubKey ++ ".ed25519"
 -- Example: @+DOl55sJo1wBqWtRuI3otubyE4M24q34X4wikX+7BXg=.ed25519
 parseIdentity :: String -> Maybe Identity
 parseIdentity str = if "@" `L.isPrefixOf` str && ".ed25519" `L.isSuffixOf` str then
-                      let encPKStr = L.take (L.length str - 9) . L.drop 1 $ str in
+                      let encPKStr = L.drop 1 str in
                       let encPK    = B64.decode $ BS.UTF8.fromString encPKStr in
                       case encPK of
                         Right encodedPubKey' -> case publicKey encodedPubKey' of

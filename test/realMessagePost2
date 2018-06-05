@@ -1,0 +1,20 @@
+{
+    "previous": "%K6MXBJYk+JJmqtXHUZTuHFpn+7Qh9Xc4zXtutUjSJCs=.sha256",
+    "author": "@hhknMruxen2tXWeQYkpKlFsm09ye5R9TrYQyKsM47kU=.ed25519",
+    "sequence": 202,
+    "timestamp": 1528224271316,
+    "hash": "sha256",
+    "content": {
+      "type": "post",
+      "text": "#GNU #Linux-libre 4.16.14-gnu, 4.14.48-gnu, and 4.9.106-gnu source tarballs and patches are now available.  4.16.14-gnu fixes an async firmware-(not-)loading bug introduced in 4.16-gnu, and backports Dreamcast Yamaha AICA sound (Free) firmware loading",
+      "mentions": [
+        {
+          "link": "#GNU"
+        },
+        {
+          "link": "#Linux-libre"
+        }
+      ]
+    },
+    "signature": "g/mG32tOwXJQPBJF5itc7F+N71eiUEbAFc85kcmKLPCuQJENyusgxr7M5mwqez0KYIu1G6dOheIcJYtRfK8pAg==.sig.ed25519"
+  }

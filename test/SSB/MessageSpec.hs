@@ -63,4 +63,13 @@ spec = do
       it "Verifies" $ example $ do
         raw_msg <- BS.readFile "test/realMessagePost1"
         let msg = A.decodeStrict raw_msg :: Maybe (Message Post)
-        pending -- (msg >>= verifyMessage) `shouldBe` Just True
+        (msg >>= verifyMessage) `shouldBe` Just True
+    context "Example 2" $ do
+      it "Decodes" $ example $ do
+        raw_msg <- BS.readFile "test/realMessagePost2"
+        let msg = A.decodeStrict raw_msg :: Maybe (Message Post)
+        isJust msg `shouldBe` True
+      it "Verifies" $ example $ do
+        raw_msg <- BS.readFile "test/realMessagePost2"
+        let msg = A.decodeStrict raw_msg :: Maybe (Message Post)
+        (msg >>= verifyMessage) `shouldBe` Just True
