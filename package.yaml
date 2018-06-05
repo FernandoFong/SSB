@@ -1,7 +1,7 @@
 name:                ssb-client-hs
 version:             0.1.0.0
-github:              "githubuser/ssb-client-hs"
-license:             BSD3
+github:              "fabianhjr/ssb-client-hs"
+license:             AGPLv3
 author:              "Author name here"
 maintainer:          "example@example.com"
 copyright:           "2018 Author name here"
@@ -17,16 +17,16 @@ extra-source-files:
 # To avoid duplicated efforts in documentation and dealing with the
 # complications of embedding Haddock markup inside cabal files, it is
 # common to point users to the README.md file.
-description:         Please see the README on GitHub at <https://github.com/githubuser/ssb-client-hs#readme>
+description:         Please see the README on GitHub at <https://github.com/fabianhjr/ssb-client-hs#readme>
 
 dependencies:
-- base              >= 4.7      && < 5
+- base              >= 4.10.1   && < 5
 
-- memory            >= 0.14     && < 1
+- memory            >= 0.14.16  && < 1
 - text              >= 1.2.3.0  && < 2
-- time              >= 1.8.0    && < 2
+- time              >= 1.8.0.2  && < 2
 - utf8-string       >= 1.0.1.1  && < 2
-- bytestring        >= 0.10     && < 1
+- bytestring        >= 0.10.8.2 && < 1
 - base64-bytestring >= 1.0.0.1  && < 2
 - directory         >= 1.3.0.2  && < 2
 
@@ -38,24 +38,25 @@ dependencies:
 - cryptonite        >= 0.25     && < 1
 
 # Networking
-- network           >= 2.6.0    && < 3
+- network           >= 2.6.3.5  && < 3
 - network-info      >= 0.2.0.10 && < 1
 
 # Test
-- QuickCheck        >= 2.10.1    && < 3
+- QuickCheck        >= 2.10.1   && < 3
 
 
 library:
   source-dirs: src
 
 executables:
-  ssb-client-hs-exe:
+  ssb-hs:
     main:                Main.hs
     source-dirs:         app
     ghc-options:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
+    - -O2
     dependencies:
     - ssb-client-hs
 

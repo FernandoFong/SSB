@@ -1,13 +1,13 @@
 {
-    "previous": "%p3SnVP2mjkt3MjGU/v4HwlMA/VC8Sod43RwZkEWI3tw=.sha256",
-    "author": "@e/XKBOGH0TbTRM1PsuaRdxZ5gxphu8MWGkM0L4UmuFM=.ed25519",
-    "sequence": 59,
-    "timestamp": 1528200187901,
-    "hash": "sha256",
-    "content": {
-      "type": "contact",
-      "contact": "@qqkFMW9Lxib9odzdPNsqWy45vmTyRaOyiQG+yPjbadg=.ed25519",
-      "following": true
-    },
-    "signature": "GIMn7d6FMT5e9DG0Mp8BpWWQCe3oVzJ3OdZP2qLENQsdVDV3B9foWyw0YgOiqUb4h4Qd+z3MjGP3HfkAgEpuBg==.sig.ed25519"
+  "previous": "%p3SnVP2mjkt3MjGU/v4HwlMA/VC8Sod43RwZkEWI3tw=.sha256",
+  "author": "@e/XKBOGH0TbTRM1PsuaRdxZ5gxphu8MWGkM0L4UmuFM=.ed25519",
+  "sequence": 59,
+  "timestamp": 1528200187901,
+  "hash": "sha256",
+  "content": {
+    "type": "contact",
+    "contact": "@qqkFMW9Lxib9odzdPNsqWy45vmTyRaOyiQG+yPjbadg=.ed25519",
+    "following": true
+  },
+  "signature": "GIMn7d6FMT5e9DG0Mp8BpWWQCe3oVzJ3OdZP2qLENQsdVDV3B9foWyw0YgOiqUb4h4Qd+z3MjGP3HfkAgEpuBg==.sig.ed25519"
 }
