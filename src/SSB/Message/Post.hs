@@ -33,7 +33,7 @@ data Post = Post {
       text     :: Text
     , root     :: Maybe ByteString
     , branch   :: Maybe ByteString
-    , reply    :: Maybe [Identity]
+    , reply    :: Maybe Object
     , channel  :: Maybe ByteString
     , mentions :: Maybe [Mention]
     , recps    :: Maybe [Identity]

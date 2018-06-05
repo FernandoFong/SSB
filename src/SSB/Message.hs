@@ -7,27 +7,26 @@ import GHC.Generics
 import Data.Semigroup ((<>))
 import Data.Maybe (isJust, fromJust)
 import Data.Either (fromRight)
-
 import Data.Char
-import Data.ByteString        as BS
-import Data.ByteString.Lazy (toStrict)
-import Data.ByteString.UTF8   as BSUTF8
-import Data.ByteString.Base64 as B64
-import Data.ByteArray         as BA
-
-import Data.Text              as T
-import Data.Text.Encoding     as T.Enc
 
 import Data.Time.Clock.System
 
-import Data.Aeson
-import Data.Aeson.Encode.Pretty
+import qualified Data.ByteString        as BS
+import qualified Data.ByteString.Lazy   as BS (toStrict)
+import qualified Data.ByteString.UTF8   as BS
+import qualified Data.ByteString.Base64 as B64
+import qualified Data.ByteArray         as BA
+import qualified Data.Text              as T
+import qualified Data.Text.Encoding     as T
 
-import Crypto.Error
-import Crypto.Hash
-import Crypto.PubKey.Ed25519 as Crypto
+import qualified Data.Aeson               as A
+import qualified Data.Aeson.Encode.Pretty as A
 
-import Test.QuickCheck
+import qualified Crypto.Error          as C
+import qualified Crypto.Hash           as C
+import qualified Crypto.PubKey.Ed25519 as C
+
+import qualified Test.QuickCheck as Q
 
 import SSB.Misc
 import SSB.Identity
@@ -36,64 +35,72 @@ import SSB.Identity
 -- | Message. As documented on the protocol guide: https://ssbc.github.io/scuttlebutt-protocol-guide/#feeds
 --
 data Message a = Message {
-    previous  :: Maybe ByteString -- Message ID of the latest message posted in the feed. If this is the very first message then use null. See below for how to compute a message’s ID.
-  , author    :: Identity   -- Public key of the feed that the message will be posted in.
-  , sequence  :: Integer    -- 1 for the first message in a feed, 2 for the second and so on.
-  , timestamp :: DotNetTime -- Time the message was created. Number of milliseconds since 1 January 1970 00:00 UTC.
-  , hash_message      :: ByteString -- The fixed string sha256, which is the hash_message function used to compute the message ID.
-  , content   :: a          -- Free-form JSON. It is up to applications to interpret what it means. It’s polite to specify a type field so that applications can easily filter out message types they don’t understand.
-  , signature :: Maybe ByteString
+    previous  :: Maybe BS.ByteString  -- Message ID of the latest message posted in the feed. If this is the very first message then use null. See below for how to compute a message’s ID.
+  , author    :: Identity             -- Public key of the feed that the message will be posted in.
+  , sequence  :: Integer              -- 1 for the first message in a feed, 2 for the second and so on.
+  , timestamp :: Integer              -- Time the message was created. Number of milliseconds since 1 January 1970 00:00 UTC.
+  , hash      :: BS.ByteString        -- The fixed string sha256, which is the hash_message function used to compute the message ID.
+  , content   :: a                    -- Free-form JSON. It is up to applications to interpret what it means. It’s polite to specify a type field so that applications can easily filter out message types they don’t understand.
+  , signature  :: Maybe BS.ByteString -- Maybe signed
   } deriving (Generic, Eq, Show)
 
 --
 -- | Arbitrary Message a. For use with QuickCheck
 --
-instance (ToJSON a, Arbitrary a) => Arbitrary (Message a) where
+-- >>> msg <- generate arbitrary :: IO (Message BS.ByteString)
+-- ...
+instance (A.ToJSON a, Q.Arbitrary a) => Q.Arbitrary (Message a) where
   arbitrary = do
-    a   <- arbitrary
-    ts  <- arbitrary
-    c   <- arbitrary
-    let m = Message {previous = Nothing, author = a, SSB.Message.sequence = 0,
-                     timestamp = ts, hash_message = fromString "sha256", content = c, SSB.Message.signature = Nothing}
+    a   <- Q.arbitrary
+    ts  <- Q.arbitrary
+    c   <- Q.arbitrary
+    let m = Message { previous             = Nothing
+                    , author               = a
+                    , SSB.Message.sequence = 0
+                    , timestamp            = ts
+                    , hash                 = BS.fromString "sha256"
+                    , content              = c
+                    , signature             = Nothing
+                    }
     return . fromJust $ signMessage m
 
 --
 -- | JSON Conversions.
 --
-instance (ToJSON a) => ToJSON (Message a) where
-    toEncoding m | isJust sig = pairs (defaultMessage <> T.pack "signature" .= toJSON sig)
-                 | otherwise  = pairs defaultMessage
-                   where
-                     sig = SSB.Message.signature m
-                     defaultMessage = T.pack "previous"  .= (toJSON . previous              $ m) <>
-                                      T.pack "author"    .= (toJSON . author                $ m) <>
-                                      T.pack "sequence"  .= (toJSON . SSB.Message.sequence  $ m) <>
-                                      T.pack "timestamp" .= (toJSON . timestamp             $ m) <>
-                                      T.pack "hash_message"      .= (toJSON . hash_message                  $ m) <>
-                                      T.pack "content"   .= (toJSON . content               $ m)
+instance (A.ToJSON a) => A.ToJSON (Message a) where
+    toEncoding m | isJust sig = A.pairs (defaultMessage <> T.pack "signature" A..= A.toJSON sig)
+                 | otherwise  = A.pairs defaultMessage
+      where
+        sig = SSB.Message.signature m
+        defaultMessage = T.pack "previous"  A..= (A.toJSON . previous              $ m) <>
+                         T.pack "author"    A..= (A.toJSON . author                $ m) <>
+                         T.pack "sequence"  A..= (A.toJSON . SSB.Message.sequence  $ m) <>
+                         T.pack "timestamp" A..= (A.toJSON . timestamp             $ m) <>
+                         T.pack "hash"      A..= (A.toJSON . hash                  $ m) <>
+                         T.pack "content"   A..= (A.toJSON . content               $ m)
 
-instance (FromJSON a) => FromJSON (Message a)
+instance (A.FromJSON a) => A.FromJSON (Message a)
     -- No need to provide a parseJSON implementation.
 
 --
 -- | Message Signature and Verification.
 --
-signMessage :: ToJSON a => Message a -> Maybe (Message a)
+signMessage :: A.ToJSON a => Message a -> Maybe (Message a)
 signMessage m = do
   seckey <- sk . author $ m
-  let sig = B64.encode . convert $
-            sign seckey pubkey (hash256 $ SSB.Message.encode m') :: ByteString
+  let sig = B64.encode . BA.convert $
+            C.sign seckey pubkey (sha256 $ encode m')
   return $ m {SSB.Message.signature = Just sig}
   where
     pubkey = pk . author $ m
     m' = m {SSB.Message.signature = Nothing}
 
-verifyMessage :: ToJSON a => Message a -> Maybe Bool
+verifyMessage :: A.ToJSON a => Message a -> Maybe Bool
 verifyMessage m = do
   msgSig <- SSB.Message.signature m
-  let decSig = fromRight (fromString "") . B64.decode $ msgSig
-  sig <- maybeCryptoError . Crypto.signature $ decSig
-  return $ verify pubkey (hash256 $ SSB.Message.encode m') sig
+  let decSig = fromRight (BS.fromString "") . B64.decode $ msgSig
+  sig <- C.maybeCryptoError . C.signature $ decSig
+  return $ C.verify pubkey (sha256 $ SSB.Message.encode m') sig
   where
     pubkey = pk . author $ m
     m' = m {SSB.Message.signature = Nothing}
@@ -102,13 +109,15 @@ verifyMessage m = do
 
 -- Generic Configurations
 
-encode :: ToJSON a => a -> ByteString
-encode = toStrict . encodePretty' confPPSSB
+encode :: A.ToJSON a => a -> BS.ByteString
+encode = BS.toStrict . A.encodePretty' confPPSSB
 
-confPPSSB = Config { confIndent = Spaces 2,
-                     confCompare = mempty,
-                     confNumFormat = Generic,
-                     confTrailingNewline = False }
+confPPSSB = A.Config { A.confIndent = A.Spaces 2
+                     , A.confCompare = messageOrder
+                     , A.confNumFormat = A.Generic
+                     , A.confTrailingNewline = False
+                     }
+  where messageOrder = A.keyOrder . fmap T.pack $ ["previous", "author", "sequence", "timestamp", "hash", "content"]
 
-hash256 :: ByteString -> Digest SHA256
-hash256  = Crypto.Hash.hash 
+sha256 :: BS.ByteString -> C.Digest C.SHA256
+sha256 = C.hash
