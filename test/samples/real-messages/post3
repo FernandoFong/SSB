@@ -1,0 +1,21 @@
+{
+    "previous": "%mn27R0hG4u+4POWMc7XdhdL8ZwPwhvNCRec5PmmnAME=.sha256",
+    "author": "@BCM6DHYJvWzwWi1lFl2tjDXjaqyZAEmJH5ZONSpXhtc=.ed25519",
+    "sequence": 1886,
+    "timestamp": 1528251068810,
+    "hash": "sha256",
+    "content": {
+      "type": "post",
+      "root": "%dr12TfI18WpLG5/dWbF+IuCrhxcgEXUbx1x/iHeAZ0o=.sha256",
+      "branch": "%o9mb5o+ziqov6vPSZn5oongevMMCu0gt0Eja0WiXnAo=.sha256",
+      "reply": {
+        "%dr12TfI18WpLG5/dWbF+IuCrhxcgEXUbx1x/iHeAZ0o=.sha256": "@k53z9zrXEsxytIE+38qaApl44ZJS68XvkepQ0fyJLdg=.ed25519",
+        "%o9mb5o+ziqov6vPSZn5oongevMMCu0gt0Eja0WiXnAo=.sha256": "@k53z9zrXEsxytIE+38qaApl44ZJS68XvkepQ0fyJLdg=.ed25519"
+      },
+      "channel": "ssb-implementations",
+      "recps": null,
+      "text": "Like I said, it's the internal ordering behavior of a hash table, or something like that. So not a simple order, it depends on the total set of fields in the message.",
+      "mentions": []
+    },
+    "signature": "agJgbpSa50BUM6zpcBvGf+g8nzcQq/h/AW4BGWOnhKSnOXv7maM8AD9FsRuJgljZBc4CIuT94EugfbapgUsQCw==.sig.ed25519"
+  }

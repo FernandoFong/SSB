@@ -13,7 +13,7 @@ import Data.Time.Clock.System
 
 import qualified Data.ByteString        as BS
 import qualified Data.ByteString.Lazy   as BS (toStrict)
-import qualified Data.ByteString.UTF8   as BS
+import qualified Data.ByteString.UTF8   as BS (fromString)
 import qualified Data.ByteString.Base64 as B64
 import qualified Data.ByteArray         as BA
 import qualified Data.Text              as T
@@ -83,6 +83,11 @@ instance (A.FromJSON a) => A.FromJSON (Message a)
     -- No need to provide a parseJSON implementation.
 
 --
+-- | Loads a message from a file, must be provided with a type hint to parse like `:: Maybe (Message Post)`
+loadMessage file =
+  A.decodeStrict <$> BS.readFile file
+
+--
 -- | Message Signature and Verification.
 --
 signMessage :: A.ToJSON a => Message a -> Maybe (Message a)
@@ -90,7 +95,7 @@ signMessage m = do
   seckey <- sk . author $ m
   let sig = B64.encode . BA.convert $
             C.sign seckey pubkey (encode m')
-  return $ m {signature = Just sig}
+  return $ m {signature = Just $ sig `BS.append` BS.fromString ".sig.ed25519"}
   where
     pubkey = pk . author $ m
     m' = m {signature = Nothing}
@@ -98,9 +103,14 @@ signMessage m = do
 verifyMessage :: A.ToJSON a => Message a -> Maybe Bool
 verifyMessage m = do
   msgSig <- signature m
-  let decSig = fromRight (BS.fromString "") . B64.decode $ msgSig
-  sig <- C.maybeCryptoError . C.signature $ decSig
-  return $ C.verify pubkey (encode m') sig
+  -- Try Decode Sig
+  let decSig = B64.decode . BS.take (BS.length msgSig - 12) $ msgSig
+  -- Either decoded Sig or Empty Sig
+  let sig = fromRight (BS.fromString "") decSig
+  -- Validate Signature (Monad Maybe returns nothing if invalid)
+  sig <- C.maybeCryptoError . C.signature $ sig
+  -- Try several encodings and return if any have valid signature
+  return . or . fmap (\encmsg -> C.verify pubkey encmsg sig) $ encode' m'
   where
     pubkey = pk . author $ m
     m' = m {SSB.Message.signature = Nothing}
@@ -109,22 +119,38 @@ verifyMessage m = do
 
 -- Generic Configurations
 
-encode :: A.ToJSON a => a -> BS.ByteString
-encode = BS.toStrict . A.encodePretty' confPPSSB
+--
+-- | Encode to JSON
+--
 
-confPPSSB = A.Config { A.confIndent = A.Spaces 2
-                     , A.confCompare = messageOrder
-                     , A.confNumFormat = A.Generic
-                     , A.confTrailingNewline = False
-                     }
-  where messageOrder = (A.keyOrder . fmap T.pack $ -- Message Order
-                        ["previous", "author", "sequence", "timestamp", "hash", "content", "type"]) <>
-                       (A.keyOrder . fmap T.pack $ -- Contact Order
-                        ["contact", "following", "blocking", "pub", "name"]) <>
-                       (A.keyOrder . fmap T.pack $ -- Mention Order
-                        ["link", "name"]) <>
-                       (A.keyOrder . fmap T.pack $ -- Post Order
-                        ["root", "branch", "reply", "channel", "rcps", "text", "mentions"])
+--
+-- | Default encoding following the Protocol Documentation as closely as possible
+--
+encode :: A.ToJSON a => a -> BS.ByteString
+encode = head . encode'
+
+--
+-- | Since there are many messages IRL with different orders this helps verification attempts.
+--
+encode' :: A.ToJSON a => a -> [BS.ByteString]
+encode' m = fmap (\c -> BS.toStrict . A.encodePretty' c $ m) confPPSSB'
+
+confPPSSB' = fmap (\order -> A.Config { A.confIndent = A.Spaces 2
+                                     , A.confCompare = order
+                                     , A.confNumFormat = A.Generic
+                                     , A.confTrailingNewline = False
+                                     }) reasonableMessageOrders
+  where reasonableMessageOrders = do
+          message <- messageOrders
+          contact <- contactOrders
+          mention <- mentionOrders
+          post    <- postOrders
+          return . A.keyOrder . concatMap (fmap T.pack) $ [message, contact, mention, post]
+        messageOrders = [["previous", "author", "sequence", "timestamp", "hash", "content", "type"],
+                         ["previous", "sequence", "author", "timestamp", "hash", "content", "type"]]
+        contactOrders = [["contact", "following", "blocking", "pub", "name"]]
+        mentionOrders = [["link", "name"]]
+        postOrders    = [["root", "branch", "reply", "channel", "rcps", "text", "mentions"]]
 
 sha256 :: BS.ByteString -> C.Digest C.SHA256
 sha256 = C.hash

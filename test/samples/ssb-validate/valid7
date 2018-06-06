@@ -1,0 +1,11 @@
+{
+      "previous": null,
+      "sequence": 1,
+      "author": "@AzvddyStfk/T95/3VuHxuJRwqqpBkCyoW7qHRCui2N4=.ed25519",
+      "timestamp": 1491901740000,
+      "hash": "sha256",
+      "content": {
+        "type": "TTT"
+      },
+      "signature": "HR3lI0pOTYaaKTWwI5yBr88anTIOsp4MkxohnPDXuohKfgWUQh8loOJxbnpoQ1WveRtmY9O18xSXUR/3zK3sAg==.sig.ed25519"
+}

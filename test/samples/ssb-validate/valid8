@@ -1,0 +1,11 @@
+{
+      "previous": null,
+      "sequence": 1,
+      "author": "@+7DLwEDFS+Q/JUD+aAYKjSOFVabm9eUteFxPT54aI7k=.ed25519",
+      "timestamp": 1491901740000,
+      "hash": "sha256",
+      "content": {
+        "type": "%yMpHglyYG0DfhJGdSXLTiy7Ok00Kxc2XhpdNYlWFBOI=.sha256"
+      },
+      "signature": "M1HmhwpCCrhavnoqTlHyPTdgK+rZsvEhSzgO9Uhhqi4JGCUI/Aa64UA77/UM/ts0Y1x9gLurv2hSgGpdn9MVBA==.sig.ed25519"
+}

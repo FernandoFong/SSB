@@ -1,3 +1,5 @@
+{-# LANGUAGE ScopedTypeVariables #-}
+
 module SSB.MessageSpec where
 
 import Test.Hspec
@@ -37,39 +39,96 @@ spec = do
   describe "Attempt to parse message contact examples" $ do
     context "Example 1" $ do
       it "Decodes" $ example $ do
-        raw_msg <- BS.readFile "test/realMessageContact1"
-        let msg = A.decodeStrict raw_msg :: Maybe (Message Contact)
+        msg :: Maybe (Message Contact) <- loadMessage "test/samples/real-messages/contact1"
         isJust msg `shouldBe` True
       it "Verifies" $ example $ do
-        raw_msg <- BS.readFile "test/realMessageContact1"
-        let msg = A.decodeStrict raw_msg :: Maybe (Message Contact)
-        pending -- (msg >>= verifyMessage) `shouldBe` Just True
+        msg :: Maybe (Message Contact) <- loadMessage "test/samples/real-messages/contact1"
+        (msg >>= verifyMessage) `shouldBe` Just True
     context "Example 2" $ do
       it "Decodes" $ example $ do
-        raw_msg <- BS.readFile "test/realMessageContact2"
-        let msg = A.decodeStrict raw_msg :: Maybe (Message Contact)
+        msg :: Maybe (Message Contact) <- loadMessage "test/samples/real-messages/contact2"
         isJust msg `shouldBe` True
       it "Verifies" $ example $ do
-        raw_msg <- BS.readFile "test/realMessageContact2"
-        let msg = A.decodeStrict raw_msg :: Maybe (Message Contact)
+        msg :: Maybe (Message Contact) <- loadMessage "test/samples/real-messages/contact2"
         (msg >>= verifyMessage) `shouldBe` Just True
 
   describe "Attempt to parse message post examples" $ do
     context "Example 1" $ do
       it "Decodes" $ example $ do
-        raw_msg <- BS.readFile "test/realMessagePost1"
-        let msg = A.decodeStrict raw_msg :: Maybe (Message Post)
+        msg :: Maybe (Message Post) <- loadMessage "test/samples/real-messages/post1"
         isJust msg `shouldBe` True
       it "Verifies" $ example $ do
-        raw_msg <- BS.readFile "test/realMessagePost1"
-        let msg = A.decodeStrict raw_msg :: Maybe (Message Post)
+        msg :: Maybe (Message Post) <- loadMessage "test/samples/real-messages/post1"
         (msg >>= verifyMessage) `shouldBe` Just True
     context "Example 2" $ do
       it "Decodes" $ example $ do
-        raw_msg <- BS.readFile "test/realMessagePost2"
-        let msg = A.decodeStrict raw_msg :: Maybe (Message Post)
+        msg :: Maybe (Message Post) <- loadMessage "test/samples/real-messages/post2"
         isJust msg `shouldBe` True
       it "Verifies" $ example $ do
-        raw_msg <- BS.readFile "test/realMessagePost2"
-        let msg = A.decodeStrict raw_msg :: Maybe (Message Post)
+        msg :: Maybe (Message Post) <- loadMessage "test/samples/real-messages/post2"
         (msg >>= verifyMessage) `shouldBe` Just True
+    context "Example 3" $ do
+      it "Decodes" $ example $ do
+        msg :: Maybe (Message Post) <- loadMessage "test/samples/real-messages/post3"
+        isJust msg `shouldBe` True
+      it "Verifies" $ example $ do
+        msg :: Maybe (Message Post) <- loadMessage "test/samples/real-messages/post3"
+        pending -- (msg >>= verifyMessage) `shouldBe` Just True
+
+  describe "Attempt to parse and validate valid SSBC examples" $ do
+    context "Example" $ do
+      it "Decodes" $ example $ do
+        msg :: Maybe (Message A.Object) <- loadMessage "test/samples/ssb-validate/valid1"
+        isJust msg `shouldBe` True
+      it "Verifies" $ example $ do
+        msg :: Maybe (Message A.Object) <- loadMessage "test/samples/ssb-validate/valid1"
+        (msg >>= verifyMessage) `shouldBe` Just True
+    context "Example" $ do
+      it "Decodes" $ example $ do
+        msg :: Maybe (Message A.Object) <- loadMessage "test/samples/ssb-validate/valid2"
+        isJust msg `shouldBe` True
+      it "Verifies" $ example $ do
+        msg :: Maybe (Message A.Object) <- loadMessage "test/samples/ssb-validate/valid2"
+        (msg >>= verifyMessage) `shouldBe` Just True
+    context "Example" $ do
+      it "Decodes" $ example $ do
+        msg :: Maybe (Message BS.ByteString) <- loadMessage "test/samples/ssb-validate/valid3"
+        isJust msg `shouldBe` True
+      it "Verifies" $ example $ do
+        msg :: Maybe (Message BS.ByteString) <- loadMessage "test/samples/ssb-validate/valid3"
+        (msg >>= verifyMessage) `shouldBe` Just True
+    context "Example" $ do
+      it "Decodes" $ example $ do
+        msg :: Maybe (Message BS.ByteString) <- loadMessage "test/samples/ssb-validate/valid4"
+        isJust msg `shouldBe` True
+      it "Verifies" $ example $ do
+        msg :: Maybe (Message BS.ByteString) <- loadMessage "test/samples/ssb-validate/valid4"
+        (msg >>= verifyMessage) `shouldBe` Just True
+    context "Example" $ do
+      it "Decodes" $ example $ do
+        msg :: Maybe (Message A.Object) <- loadMessage "test/samples/ssb-validate/valid5"
+        isJust msg `shouldBe` True
+      it "Verifies" $ example $ do
+        msg :: Maybe (Message A.Object) <- loadMessage "test/samples/ssb-validate/valid5"
+        (msg >>= verifyMessage) `shouldBe` Just True
+    context "Example" $ do
+      it "Decodes" $ example $ do
+        msg :: Maybe (Message A.Object) <- loadMessage "test/samples/ssb-validate/valid6"
+        isJust msg `shouldBe` True
+      it "Verifies" $ example $ do
+        msg :: Maybe (Message A.Object) <- loadMessage "test/samples/ssb-validate/valid6"
+        (msg >>= verifyMessage) `shouldBe` Just True
+    context "Example" $ do
+      it "Decodes" $ example $ do
+        msg :: Maybe (Message A.Object) <- loadMessage "test/samples/ssb-validate/valid7"
+        isJust msg `shouldBe` True
+      it "Verifies" $ example $ do
+        msg :: Maybe (Message A.Object) <- loadMessage "test/samples/ssb-validate/valid7"
+        pending -- (msg >>= verifyMessage) `shouldBe` Just True
+    context "Example" $ do
+      it "Decodes" $ example $ do
+        msg :: Maybe (Message A.Object) <- loadMessage "test/samples/ssb-validate/valid8"
+        isJust msg `shouldBe` True
+      it "Verifies" $ example $ do
+        msg :: Maybe (Message A.Object) <- loadMessage "test/samples/ssb-validate/valid8"
+        pending -- (msg >>= verifyMessage) `shouldBe` Just True
