@@ -12,6 +12,7 @@ import Control.Monad
 import qualified Crypto.Error             as C
 import qualified Crypto.PubKey.Ed25519    as C.Ed25519
 import qualified Crypto.PubKey.Curve25519 as C.Cu25519
+import qualified Data.Aeson               as A
 import System.Directory (doesFileExist, getHomeDirectory, createDirectoryIfMissing)
 import Network.Info
 import Network.BSD (getProtocolNumber)
@@ -20,6 +21,7 @@ import Network.Socket.ByteString (recv, sendTo, sendAll)
 
 import SSB.Misc
 import SSB.Identity
+import SSB.Message
 
 networkIdentifier = fromRight (BS.fromString "") . B64.decode . BS.fromString $
   "1KHLiKZvAvjbY1ziZEHMXawbCEIM6qwjCDm3VYRan/s="
@@ -91,6 +93,31 @@ initConnection conn = do
 establishedConnection conn = do
   putStrLn "Connection established!"
   return ()
+
+------------------- menu --------------------------
+menu :: IO()
+menu = do 
+  putStrLn "Please select an option:"
+  putStrLn "0: If you want to exit."
+  putStrLn "1: Follow a user."
+  putStrLn "2: Show all the messages that you have."
+  putStrLn "3: Create a new message"
+  putStr "Choice an option: "
+  choice <- getChar
+  case choice of
+        '0' -> return()
+        --  '1' -> 
+        --  '2' ->
+        '3' -> do
+          putStr "Please enter a file: "
+          file <- getLine
+          contents <- BS.readFile file
+          let decodeContents = (A.decodeStrict :: BS.ByteString ->Maybe (Message BS.ByteString)) contents 
+          return()
+
+
+
+---------------------------------------------------
 
 -- Adapted from https://github.com/audreyt/network-multicast
 -- License: CC-0
