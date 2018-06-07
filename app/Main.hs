@@ -32,57 +32,46 @@ import SSB.Identity
 import SSB.Message
 import SSB.Message.Contact
 import SSB.Message.Post
+import SSB.Feed
 
 -- Some network code adapted from https://github.com/haskell/network
 -- License: BSD-3
 main :: IO ()
 main = do
-  -- Attempt to load a secrete or create a new one otherwise
+  --
+  -- Attempt to load an Identity or create a new one if none exists.
+  --
   home <- getHomeDirectory
   createDirectoryIfMissing True (home ++ "/.ssb-hs/")
   fileExists <- doesFileExist (home ++ "/.ssb-hs/secret")
-  secKey <- if fileExists
+  our_seckey <- if fileExists
     then do
-      secret <- BS.readFile (home ++ "/.ssb-hs/secret")
-      C.throwCryptoErrorIO $ C.Ed25519.secretKey secret
+      loaded_seckey <- BS.readFile (home ++ "/.ssb-hs/secret")
+      C.throwCryptoErrorIO $ C.Ed25519.secretKey loaded_seckey
     else do
-      secretKey <- C.Ed25519.generateSecretKey
-      BS.writeFile (home ++ "/.ssb-hs/secret") $ BA.convert secretKey
-      return secretKey
+      gen_seckey <- C.Ed25519.generateSecretKey
+      BS.writeFile (home ++ "/.ssb-hs/secret") $ BA.convert gen_seckey
+      return gen_seckey
   -- Derive pubkey and identity from secret key
-  let pubKey = C.Ed25519.toPublic secKey
-  let identity = Identity {sk=Just secKey, pk = pubKey}
+  let our_pubkey = C.Ed25519.toPublic our_seckey
+  let our_identity = Identity {sk = Just our_seckey, pk = our_pubkey}
   -- Print
-  putStrLn $ "Loaded identity: " ++ prettyPrint identity
+  putStrLn $ "Loaded identity: " ++ prettyPrint our_identity
+
+  --
+  -- Attempt to load our Feed or create a new one if none exists.
+  --
+  fileExists <- doesFileExist (home ++ "/.ssb-hs/messages/" ++ prettyPrint our_identity)
+  our_feed <- if fileExists
+    then loadFeed $ home ++ "/.ssb-hs/messages/" ++ prettyPrint our_identity
+    else return . Just $ newFeed our_identity
   -- Start network processes
-  withSocketsDo $ do
-    -- Broadcast identity to LAN
-    forkIO $ broadcast pubKey
-    -- TODO: Listen to broadcasts and init connection to peers
-    -- Listen for incoming connections
-    addr <- resolve "8008"
-    forkIO $ E.bracket (open addr) close loop 
-    menu identity
-
-resolve port = do
-  let hints = defaultHints {
-                  addrFlags = [AI_PASSIVE]
-                , addrSocketType = Stream
-                }
-  addr:_ <- getAddrInfo (Just hints) Nothing (Just port)
-  return addr
-
-open addr = do
-  sock <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
-  setSocketOption sock ReuseAddr 1
-  bind sock (addrAddress addr)
-  listen sock 10
-  return sock
-
-loop sock = forever $ do
-  (conn, peer) <- accept sock
-  putStrLn $ "Connection from " ++ show peer
-  void $ forkFinally (handshake conn >>= exchangeMessages) (\_ -> close conn)
+  -- Broadcast identity to LAN
+  forkIO $ broadcast our_pubkey
+  -- TODO: Listen to broadcasts and init connection to peers
+  -- Listen for incoming connections
+  forkIO listenIncoming
+  menu $ identity . fromJust $ our_feed
 
 ------------------- menu --------------------------
 menu :: Identity -> IO()

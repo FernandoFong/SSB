@@ -88,6 +88,13 @@ loadMessage file =
   A.decodeStrict <$> BS.readFile file
 
 --
+-- | Creates MessageId
+--
+messageId :: A.ToJSON a => Message a -> BS.ByteString
+messageId m = BS.concat [BS.fromString "%", m', BS.fromString ".sha256"]
+  where m' = B64.encode . BA.convert . sha256 . SSB.Misc.encode $ m
+
+--
 -- | Message Signature and Verification.
 --
 signMessage :: A.ToJSON a => Message a -> Maybe (Message a)
@@ -114,43 +121,3 @@ verifyMessage m = do
   where
     pubkey = pk . author $ m
     m' = m {SSB.Message.signature = Nothing}
-
-
-
--- Generic Configurations
-
---
--- | Encode to JSON
---
-
---
--- | Default encoding following the Protocol Documentation as closely as possible
---
-encode :: A.ToJSON a => a -> BS.ByteString
-encode = head . encode'
-
---
--- | Since there are many messages IRL with different orders this helps verification attempts.
---
-encode' :: A.ToJSON a => a -> [BS.ByteString]
-encode' m = fmap (\c -> BS.toStrict . A.encodePretty' c $ m) confPPSSB'
-
-confPPSSB' = fmap (\order -> A.Config { A.confIndent = A.Spaces 2
-                                     , A.confCompare = order
-                                     , A.confNumFormat = A.Generic
-                                     , A.confTrailingNewline = False
-                                     }) reasonableMessageOrders
-  where reasonableMessageOrders = do
-          message <- messageOrders
-          contact <- contactOrders
-          mention <- mentionOrders
-          post    <- postOrders
-          return . A.keyOrder . concatMap (fmap T.pack) $ [message, contact, mention, post]
-        messageOrders = [["previous", "author", "sequence", "timestamp", "hash", "content", "type"],
-                         ["previous", "sequence", "author", "timestamp", "hash", "content", "type"]]
-        contactOrders = [["contact", "following", "blocking", "pub", "name"]]
-        mentionOrders = [["link", "name"]]
-        postOrders    = [["root", "branch", "reply", "channel", "rcps", "text", "mentions"]]
-
-sha256 :: BS.ByteString -> C.Digest C.SHA256
-sha256 = C.hash

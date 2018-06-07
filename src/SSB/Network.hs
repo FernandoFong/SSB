@@ -10,6 +10,7 @@ import qualified Data.ByteArray as BA
 
 import Control.Monad
 import Control.Concurrent
+import qualified Control.Exception  as E
 
 import qualified Crypto.PubKey.Ed25519    as C.Ed25519
 import qualified Crypto.PubKey.Curve25519 as C.Cu25519
@@ -27,7 +28,7 @@ networkIdentifier = fromRight (BS.fromString "") . B64.decode . BS.fromString $
 -- Adapted from https://github.com/audreyt/network-multicast
 -- License: CC-0
 broadcast :: C.Ed25519.PublicKey -> IO ()
-broadcast pubkey = do
+broadcast pubkey = withSocketsDo $ do
   -- Local interfaces, excluding loopbacks.
   interfaces <- getNetworkInterfaces
   let addresses = filter (\i -> i `notElem` ["127.0.0.1", "0.0.0.0"]) $
@@ -45,10 +46,34 @@ broadcast pubkey = do
     traverse_ (\m -> sendTo sock m addr) messages
     threadDelay (1000 * 1000)
 
+listenIncoming :: IO ()
+listenIncoming = withSocketsDo $ do
+  addr <- resolve "8008"
+  E.bracket (open addr) close loop
+  where
+    resolve port = do
+      let hints = defaultHints { addrFlags = [AI_PASSIVE]
+                               , addrSocketType = Stream
+                               }
+      addr:_ <- getAddrInfo (Just hints) Nothing (Just port)
+      return addr
+
+    open addr = do
+      sock <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
+      setSocketOption sock ReuseAddr 1
+      bind sock (addrAddress addr)
+      listen sock 10
+      return sock
+
+    loop sock = forever $ do
+      (conn, peer) <- accept sock
+      putStrLn $ "Connection from " ++ show peer
+      void $ forkFinally (handshake conn >>= exchangeMessages) (\_ -> close conn)
+
 -- | Perform SSB Handshake
 -- | Documentation: https://ssbc.github.io/scuttlebutt-protocol-guide/#handshake
 handshake :: Socket -> IO (Maybe (Socket, String))
-handshake conn = do
+handshake conn = withSocketsDo $ do
   hmac_auth             <- recv conn 32
   peer_ephemeral_pubkey <- recv conn 32
   if hmac_auth == calcHmac networkIdentifier peer_ephemeral_pubkey then do
@@ -65,7 +90,7 @@ handshake conn = do
 
 -- | Exchange Messages. Unimplemented
 exchangeMessages :: Maybe (Socket, String) -> IO ()
-exchangeMessages (Just (conn, keys)) = do
+exchangeMessages (Just (conn, keys)) = withSocketsDo $ do
   putStrLn "Connection established!"
   return ()
 exchangeMessages Nothing = undefined

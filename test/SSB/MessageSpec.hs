@@ -11,6 +11,7 @@ import qualified Data.ByteString      as BS
 import qualified Data.ByteString.UTF8 as BS
 import qualified Data.Aeson           as A
 
+import SSB.Misc
 import SSB.Identity
 import SSB.Message
 import SSB.Message.Contact
