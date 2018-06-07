@@ -87,9 +87,10 @@ menu id = do
   putStrLn "1: Follow a user."
   putStrLn "2: Show all the messages that you have."
   putStrLn "3: Read a message"
-  putStrLn "4: "
+  putStrLn "4: Write a post."
   putStrLn "Choice an option: "
   choice <- getChar
+  home <- getHomeDirectory
   case choice of
         '0' -> return()
         '1' -> do 
@@ -104,7 +105,6 @@ menu id = do
           let message_friend = Message{SSB.Message.sequence = 0, previous = Nothing, author = id, timestamp = time_seconds, hash = BS.fromString "sha256", content = greeting, signature = Nothing}
           return()
         '2' -> do
-          home <- getHomeDirectory
           createDirectoryIfMissing True (home ++ "/.ssb-hs/messages/")
           list <- listDirectory (home ++ "/.ssb-hs/messages")
           putStrLn . unlines $ list
