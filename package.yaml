@@ -1,7 +1,7 @@
 name:                ssb-client-hs
 version:             0.1.0.0
 github:              "fabianhjr/ssb-client-hs"
-license:             AGPLv3
+license:             AGPL-3
 author:              "Author name here"
 maintainer:          "example@example.com"
 copyright:           "2018 Author name here"
