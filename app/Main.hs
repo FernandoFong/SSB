@@ -115,6 +115,9 @@ menu id = do
           contents <- BS.readFile file
           let decodeContents = (A.decodeStrict :: BS.ByteString -> Maybe (Message BS.ByteString)) contents 
           return()
+        _  -> do
+          putStrLn "Por favor anota solo algun numero del menu"
+          menu id
 
 
 
