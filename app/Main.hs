@@ -8,20 +8,24 @@ import qualified Data.ByteString.Base64 as B64
 import qualified Data.ByteArray as BA
 import qualified Control.Exception as E
 import Control.Concurrent (forkIO, forkFinally, threadDelay)
-import Control.Monad
+import Control.Monad 
 import qualified Crypto.Error             as C
 import qualified Crypto.PubKey.Ed25519    as C.Ed25519
 import qualified Crypto.PubKey.Curve25519 as C.Cu25519
 import qualified Data.Aeson               as A
+import Data.Maybe
 import System.Directory (doesFileExist, getHomeDirectory, createDirectoryIfMissing)
-import Network.Info
+import Network.Info 
 import Network.BSD (getProtocolNumber)
 import Network.Socket hiding (recv, sendTo)
 import Network.Socket.ByteString (recv, sendTo, sendAll)
+import qualified Data.Time.Clock.System     as S
+import Data.Time.Clock.System
 
 import SSB.Misc
 import SSB.Identity
 import SSB.Message
+import SSB.Message.Contact
 
 networkIdentifier = fromRight (BS.fromString "") . B64.decode . BS.fromString $
   "1KHLiKZvAvjbY1ziZEHMXawbCEIM6qwjCDm3VYRan/s="
@@ -54,7 +58,8 @@ main = do
     -- TODO: Listen to broadcasts and init connection to peers
     -- Listen for incoming connections
     addr <- resolve "8008"
-    E.bracket (open addr) close loop
+    forkIO $ E.bracket (open addr) close loop 
+    menu identity
 
 resolve port = do
   let hints = defaultHints {
@@ -95,8 +100,8 @@ establishedConnection conn = do
   return ()
 
 ------------------- menu --------------------------
-menu :: IO()
-menu = do 
+menu :: Identity -> IO()
+menu id = do 
   putStrLn "Please select an option:"
   putStrLn "0: If you want to exit."
   putStrLn "1: Follow a user."
@@ -106,13 +111,23 @@ menu = do
   choice <- getChar
   case choice of
         '0' -> return()
-        --  '1' -> 
-        --  '2' ->
+        '1' -> do 
+          putStrLn "Who do you want to follow? Please write it below."
+          friend <- getLine
+          let idFriend = fromJust $ parseIdentity friend
+          putStrLn "Send him a message, so it's easier to locate you"
+          greeting <- getLine
+          time <- getSystemTime
+          let time_seconds = toInteger $ systemSeconds  time
+          let contact_friend = Contact{contact = idFriend, following = Just True, blocking = Nothing, pub = Nothing, SSB.Message.Contact.name = Nothing}
+          let message_friend = Message{SSB.Message.sequence = 0, previous = Nothing, author = id, timestamp = time_seconds, hash = BS.fromString "sha256", content = greeting, signature = Nothing}
+          return()
+        --'2' ->
         '3' -> do
           putStr "Please enter a file: "
           file <- getLine
           contents <- BS.readFile file
-          let decodeContents = (A.decodeStrict :: BS.ByteString ->Maybe (Message BS.ByteString)) contents 
+          let decodeContents = (A.decodeStrict :: BS.ByteString -> Maybe (Message BS.ByteString)) contents 
           return()
 
 
