@@ -22,6 +22,9 @@ import qualified Data.Time.Clock.System     as S
 import Data.Time.Clock.System
 import System.Directory
 import qualified Data.Text as T
+import System.IO
+import Control.Exception (bracket)
+import Data.List
 
 import SSB.Misc
 import SSB.Network
@@ -105,19 +108,23 @@ menu id = do
           let time_seconds = toInteger $ systemSeconds  time
           let contact_friend = Contact{contact = idFriend, following = Just True, blocking = Nothing, pub = Nothing, SSB.Message.Contact.name = Nothing}
           let message_friend = Message{SSB.Message.sequence = 0, previous = Nothing, author = id, timestamp = time_seconds, hash = BS.fromString "sha256", content = greeting, signature = Nothing}
-          return()
+          menu id
         '2' -> do
           createDirectoryIfMissing True (home ++ "/.ssb-hs/messages/")
           list <- listDirectory (home ++ "/.ssb-hs/messages")
           putStrLn . unlines $ list
+          menu id
+          
 
         '3' -> do
           putStr "Please enter a file: "
           file <- getLine
           contents <- BS.readFile file
           let decodeContents = (A.decodeStrict :: BS.ByteString -> Maybe (Message BS.ByteString)) contents 
-          return()
+          menu id
+
         '4' -> do
+          --hSetBuffering stdout LineBuffering
           putStrLn "Type your message: "
           content <- getLine
           time <- getSystemTime
@@ -139,8 +146,9 @@ menu id = do
                   putStrLn "Post and message wrote succesfully!"
           return()
         _  -> do
-          putStrLn "Por favor anota solo algun numero del menu"
+          putStrLn "Por favor anota solo algún numero del menu"
           menu id
+
 
 
 
