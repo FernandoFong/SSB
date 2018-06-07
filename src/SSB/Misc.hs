@@ -4,6 +4,9 @@ import Data.Char
 import Data.Text.Encoding
 import Data.ByteString
 import Data.ByteString.UTF8
+import Data.ByteArray as BA
+import Crypto.Hash     as C
+import Crypto.MAC.HMAC as C
 import Data.Aeson
 
 import Data.Time.Clock.System
@@ -24,3 +27,5 @@ instance ToJSON ByteString where
 
 instance FromJSON ByteString where
   parseJSON = withText "ByteString" $ \bs -> pure $ encodeUtf8 bs
+
+calcHmac key msg = BA.convert (C.hmacGetDigest . C.hmac key $ msg :: C.Digest C.SHA512t_256)

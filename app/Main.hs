@@ -1,22 +1,28 @@
 module Main where
 
 import Data.Foldable (traverse_)
+import Data.Either
 import qualified Data.ByteString        as BS
 import qualified Data.ByteString.UTF8   as BS (fromString)
 import qualified Data.ByteString.Base64 as B64
 import qualified Data.ByteArray as BA
 import qualified Control.Exception as E
 import Control.Concurrent (forkIO, forkFinally, threadDelay)
-import Control.Monad (unless, forever, void)
-import qualified Crypto.Error          as C
-import qualified Crypto.PubKey.Ed25519 as C
+import Control.Monad
+import qualified Crypto.Error             as C
+import qualified Crypto.PubKey.Ed25519    as C.Ed25519
+import qualified Crypto.PubKey.Curve25519 as C.Cu25519
 import System.Directory (doesFileExist, getHomeDirectory, createDirectoryIfMissing)
 import Network.Info
 import Network.BSD (getProtocolNumber)
 import Network.Socket hiding (recv, sendTo)
 import Network.Socket.ByteString (recv, sendTo, sendAll)
 
+import SSB.Misc
 import SSB.Identity
+
+networkIdentifier = fromRight (BS.fromString "") . B64.decode . BS.fromString $
+  "1KHLiKZvAvjbY1ziZEHMXawbCEIM6qwjCDm3VYRan/s="
 
 -- Some network code adapted from https://github.com/haskell/network
 -- License: BSD-3
@@ -29,13 +35,13 @@ main = do
   secKey <- if fileExists
     then do
       secret <- BS.readFile (home ++ "/.ssb-hs/secret")
-      C.throwCryptoErrorIO $ C.secretKey secret
+      C.throwCryptoErrorIO $ C.Ed25519.secretKey secret
     else do
-      secretKey <- C.generateSecretKey
+      secretKey <- C.Ed25519.generateSecretKey
       BS.writeFile (home ++ "/.ssb-hs/secret") $ BA.convert secretKey
       return secretKey
   -- Derive pubkey and identity from secret key
-  let pubKey = C.toPublic secKey
+  let pubKey = C.Ed25519.toPublic secKey
   let identity = Identity {sk=Just secKey, pk = pubKey}
   -- Print
   putStrLn $ "Loaded identity: " ++ prettyPrint identity
@@ -66,17 +72,29 @@ open addr = do
 loop sock = forever $ do
   (conn, peer) <- accept sock
   putStrLn $ "Connection from " ++ show peer
-  void $ forkFinally (talk conn) (\_ -> close conn)
+  void $ forkFinally (initConnection conn) (\_ -> close conn)
 
-talk conn = do
-  msg <- recv conn 1024
-  unless (BS.null msg) $ do
-    sendAll conn msg
-    talk conn
+initConnection conn = do
+  -- Perform SSB Handshake
+  -- Documentation: https://ssbc.github.io/scuttlebutt-protocol-guide/#handshake
+  hmac_auth             <- recv conn 32
+  peer_ephemeral_pubkey <- recv conn 32
+  when (hmac_auth == calcHmac networkIdentifier peer_ephemeral_pubkey) $ do
+    putStrLn "First step of handshake completed."
+    our_ephemeral_seckey   <- C.Cu25519.generateSecretKey
+    let our_ephemeral_pubkey = C.Cu25519.toPublic our_ephemeral_seckey
+    let hmac_auth    = calcHmac networkIdentifier our_ephemeral_pubkey
+    sendAll conn hmac_auth
+    sendAll conn $ BA.convert our_ephemeral_pubkey
+    establishedConnection conn
+
+establishedConnection conn = do
+  putStrLn "Connection established!"
+  return ()
 
 -- Adapted from https://github.com/audreyt/network-multicast
 -- License: CC-0
-broadcast :: C.PublicKey -> IO ()
+broadcast :: C.Ed25519.PublicKey -> IO ()
 broadcast pubkey = do
   -- Local interfaces, excluding loopbacks.
   interfaces <- getNetworkInterfaces
@@ -94,4 +112,3 @@ broadcast pubkey = do
   forever $ do
     traverse_ (\m -> sendTo sock m addr) messages
     threadDelay (1000 * 1000)
-
