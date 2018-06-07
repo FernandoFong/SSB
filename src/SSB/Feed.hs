@@ -66,6 +66,7 @@ loadFeed file = do
     return Nothing
 
 writeFeed :: Feed -> FilePath -> IO ()
-writeFeed f path = if verifyFeed f then BS.writeFile path $ SSB.Misc.encode f
-  else
-    putStrLn "Error: Failed to Verify Feed"
+writeFeed f path = if verifyFeed f then
+                     BS.writeFile path $ SSB.Misc.encode f
+                   else
+                     putStrLn "Error: Failed to Verify Feed to be Written"
