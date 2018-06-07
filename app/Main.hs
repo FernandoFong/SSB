@@ -14,13 +14,13 @@ import qualified Crypto.PubKey.Ed25519    as C.Ed25519
 import qualified Crypto.PubKey.Curve25519 as C.Cu25519
 import qualified Data.Aeson               as A
 import Data.Maybe
-import System.Directory (doesFileExist, getHomeDirectory, createDirectoryIfMissing)
 import Network.Info 
 import Network.BSD (getProtocolNumber)
 import Network.Socket
 import Network.Socket.ByteString (recv, sendTo, sendAll)
 import qualified Data.Time.Clock.System     as S
 import Data.Time.Clock.System
+import System.Directory
 
 import SSB.Misc
 import SSB.Network
@@ -86,8 +86,9 @@ menu id = do
   putStrLn "0: If you want to exit."
   putStrLn "1: Follow a user."
   putStrLn "2: Show all the messages that you have."
-  putStrLn "3: Create a new message"
-  putStr "Choice an option: "
+  putStrLn "3: Read a message"
+  putStrLn "4: "
+  putStrLn "Choice an option: "
   choice <- getChar
   case choice of
         '0' -> return()
@@ -102,7 +103,12 @@ menu id = do
           let contact_friend = Contact{contact = idFriend, following = Just True, blocking = Nothing, pub = Nothing, SSB.Message.Contact.name = Nothing}
           let message_friend = Message{SSB.Message.sequence = 0, previous = Nothing, author = id, timestamp = time_seconds, hash = BS.fromString "sha256", content = greeting, signature = Nothing}
           return()
-        --'2' ->
+        '2' -> do
+          home <- getHomeDirectory
+          createDirectoryIfMissing True (home ++ "/.ssb-hs/messages/")
+          list <- listDirectory (home ++ "/.ssb-hs/messages")
+          putStrLn . unlines $ list
+
         '3' -> do
           putStr "Please enter a file: "
           file <- getLine
