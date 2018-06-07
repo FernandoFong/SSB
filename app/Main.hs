@@ -77,11 +77,7 @@ open addr = do
 loop sock = forever $ do
   (conn, peer) <- accept sock
   putStrLn $ "Connection from " ++ show peer
-  void $ forkFinally (handshake conn) (\_ -> close conn)
-
-establishedConnection conn = do
-  putStrLn "Connection established!"
-  return ()
+  void $ forkFinally (handshake conn >>= exchangeMessages) (\_ -> close conn)
 
 ------------------- menu --------------------------
 menu :: Identity -> IO()

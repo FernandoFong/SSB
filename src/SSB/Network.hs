@@ -47,7 +47,7 @@ broadcast pubkey = do
 
 -- | Perform SSB Handshake
 -- | Documentation: https://ssbc.github.io/scuttlebutt-protocol-guide/#handshake
-handshake :: Socket -> IO (Maybe Socket)
+handshake :: Socket -> IO (Maybe (Socket, String))
 handshake conn = do
   hmac_auth             <- recv conn 32
   peer_ephemeral_pubkey <- recv conn 32
@@ -58,7 +58,14 @@ handshake conn = do
     let hmac_auth    = calcHmac networkIdentifier our_ephemeral_pubkey
     sendAll conn hmac_auth
     sendAll conn $ BA.convert our_ephemeral_pubkey
-    return $ Just conn
+    return $ Just (conn, "Missing Keys")
   else do
     close conn
     return Nothing
+
+-- | Exchange Messages. Unimplemented
+exchangeMessages :: Maybe (Socket, String) -> IO ()
+exchangeMessages (Just (conn, keys)) = do
+  putStrLn "Connection established!"
+  return ()
+exchangeMessages Nothing = undefined
