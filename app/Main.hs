@@ -21,12 +21,14 @@ import Network.Socket.ByteString (recv, sendTo, sendAll)
 import qualified Data.Time.Clock.System     as S
 import Data.Time.Clock.System
 import System.Directory
+import qualified Data.Text as T
 
 import SSB.Misc
 import SSB.Network
 import SSB.Identity
 import SSB.Message
 import SSB.Message.Contact
+import SSB.Message.Post
 
 -- Some network code adapted from https://github.com/haskell/network
 -- License: BSD-3
@@ -114,6 +116,27 @@ menu id = do
           file <- getLine
           contents <- BS.readFile file
           let decodeContents = (A.decodeStrict :: BS.ByteString -> Maybe (Message BS.ByteString)) contents 
+          return()
+        '4' -> do
+          putStrLn "Type your message: "
+          content <- getLine
+          time <- getSystemTime
+          let time_seconds = toInteger $ systemSeconds time
+          let message = Message{SSB.Message.sequence = 0, previous = Nothing, author = id, timestamp = time_seconds, hash = BS.fromString "sha256", content = content, signature = Nothing};
+          let verified_mess = signMessage message
+          let text_content = T.pack content
+          case verified_mess of
+            Nothing -> putStrLn "Signature failed"
+            Just m -> do
+              writeFile (home ++ "/.ssb-hs/messages/"++ "messages.txt") content
+              let post = Post{text = text_content, root = Nothing, branch = Nothing, reply = Nothing, channel = Nothing, mentions = Nothing, recps = Nothing}
+              let post_mess = Message{SSB.Message.sequence = 0, previous = Nothing, author = id, timestamp = time_seconds, hash = BS.fromString "sha256", content = post, signature = Nothing};
+              let verified_post = signMessage post_mess
+              case verified_post of
+                Nothing -> putStrLn "Post failed"
+                Just m -> do
+                  writeFile (home ++ "/.ssb-hs/messages/"++ "messages.txt") content
+                  putStrLn "Post and message wrote succesfully!"
           return()
         _  -> do
           putStrLn "Por favor anota solo algun numero del menu"
