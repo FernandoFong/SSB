@@ -94,6 +94,12 @@ messageId :: A.ToJSON a => Message a -> BS.ByteString
 messageId m = BS.concat [BS.fromString "%", m', BS.fromString ".sha256"]
   where m' = B64.encode . BA.convert . sha256 . SSB.Misc.encode $ m
 
+messageCurrentTime :: IO Integer
+messageCurrentTime = do
+  time_c <- getSystemTime
+  return $ ((1000 *) . toInteger . systemSeconds $ time_c) +
+    ((`div` 1000000) . toInteger . systemNanoseconds $ time_c)
+
 --
 -- | Message Signature and Verification.
 --
