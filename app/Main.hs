@@ -64,6 +64,7 @@ main = do
   --
   -- Attempt to load our Feed or create a new one if none exists.
   --
+  createDirectoryIfMissing True (home ++ "/.ssb-hs/messages/")
   fileExists <- doesFileExist $ home ++ "/.ssb-hs/messages/" ++ prettyPrint our_identity
   our_feed <- if fileExists
     then loadFeed $ home ++ "/.ssb-hs/messages/" ++ prettyPrint our_identity
@@ -99,36 +100,34 @@ menu i = do
   home <- getHomeDirectory
   feed <- loadFeed $ home ++ "/.ssb-hs/messages/" ++ prettyPrint i
   -- Get Input
+  putStr "> "
+  hFlush stdout
   input <- words <$> getLine
+  putStrLn ""
 
   -- Process Input
   unless (null input || isNothing feed) $ do
-    when (head input == "help") help
-    when (head input == "follow" && length input >= 2) $ (follow . fromJust $ feed) (input !! 1)
+    case head input of
+      "help" -> help
+      "follow" -> do
+        guard (length input >= 2)
+        (follow . fromJust $ feed) (input !! 1)
+      "list" -> do
+        list <- listDirectory (home ++ "/.ssb-hs/messages")
+        putStrLn "This are the available feeds: "
+        putStrLn "----------"
+        putStrLn . unlines $ list
+      "exit" -> mempty
+      _ -> putStrLn "Unrecognized input!"
+    putStrLn ""
+    -- Loop if not asked to exit
     unless (head input == "exit") $ menu i
+
+  -- Process empty input
   when (null input) $ do
     unless (isNothing feed) $ menu i
     when (isNothing feed) $
       putStrLn "Feed error"
-  -- case choice of
-  --       '0' -> return()
-  --       '1' -> do 
-  --         putStrLn "Who do you want to follow? Please write it below."
-  --         friend <- getLine
-  --         let idFriend = fromJust $ parseIdentity friend
-  --         putStrLn "Send him a message, so it's easier to locate you"
-  --         greeting <- getLine
-  --         time <- getSystemTime
-  --         let time_seconds = toInteger $ systemSeconds  time
-  --         let contact_friend = Contact{contact = idFriend, following = Just True, blocking = Nothing, pub = Nothing, SSB.Message.Contact.name = Nothing}
-  --         let message_friend = Message{SSB.Message.sequence = 0, previous = Nothing, author = id, timestamp = time_seconds, hash = BS.fromString "sha256", content = greeting, signature = Nothing}
-  --         menu id
-  --       '2' -> do
-  --         createDirectoryIfMissing True (home ++ "/.ssb-hs/messages/")
-  --         list <- listDirectory (home ++ "/.ssb-hs/messages")
-  --         putStrLn . unlines $ list
-  --         menu id
-          
 
   --       '3' -> do
   --         putStr "Please enter a file: "
@@ -166,12 +165,10 @@ menu i = do
 help :: IO ()
 help = do
   putStrLn "Available commands:"
-  putStrLn "exit"
-  putStrLn "1: Follow a user."
-  putStrLn "2: Show all the messages that you have."
-  putStrLn "3: Read a message"
-  putStrLn "4: Write a post."
-  putStrLn "Choice an option: "
+  putStrLn "----------"
+  putStrLn "follow [id] \t | Follows another identity"
+  putStrLn "list \t\t | Lists all available feeds"
+  putStrLn "exit \t\t | Exits the program"
 
 follow :: Feed -> String -> IO ()
 follow f s = do
