@@ -67,10 +67,10 @@ main = do
   createDirectoryIfMissing True (home ++ "/.ssb-hs/messages/")
   fileExists <- doesFileExist $ home ++ "/.ssb-hs/messages/" ++ prettyPrint our_identity
   our_feed <- if fileExists
-    then loadFeed $ home ++ "/.ssb-hs/messages/" ++ prettyPrint our_identity
+    then loadFeed $ home ++ "/.ssb-hs/messages/" ++ (escape . prettyPrint$ our_identity)
     else do
       let created_feed = newFeed our_identity
-      writeFeed created_feed $ home ++ "/.ssb-hs/messages/" ++ prettyPrint our_identity
+      writeFeed created_feed $ home ++ "/.ssb-hs/messages/" ++ (escape . prettyPrint $ our_identity)
       return $ Just created_feed
 
   --
@@ -98,7 +98,7 @@ menu :: Identity -> IO ()
 menu i = do
   -- General Info
   home <- getHomeDirectory
-  feed' <- loadFeed $ home ++ "/.ssb-hs/messages/" ++ prettyPrint i
+  feed' <- loadFeed $ home ++ "/.ssb-hs/messages/" ++ (escape . prettyPrint $ i)
   let feed = (fromJust feed') {identity = i}
   -- Get Input
   putStr "> "
@@ -183,5 +183,5 @@ writeMessage f c = do
                   , signature = Nothing
                   }
   case m `appendTo` f of
-    Just f' -> writeFeed f' $ home ++ "/.ssb-hs/messages/" ++ (prettyPrint . identity $ f')
+    Just f' -> writeFeed f' $ home ++ "/.ssb-hs/messages/" ++ (escape. prettyPrint . identity $ f')
     Nothing -> putStrLn "Error following"

@@ -61,3 +61,8 @@ confPPSSB' = fmap (\order -> A.Config { A.confIndent = A.Spaces 2
         contactOrders = [["contact", "following", "blocking", "pub", "name"]]
         mentionOrders = [["link", "name"]]
         postOrders    = [["root", "branch", "reply", "channel", "rcps", "text", "mentions"]]
+
+escape :: String -> String
+escape [] = []
+escape (x:xs) | x == '/' = '\\' : escape xs
+              | otherwise = x : escape xs
