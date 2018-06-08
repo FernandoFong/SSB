@@ -98,7 +98,8 @@ menu :: Identity -> IO ()
 menu i = do
   -- General Info
   home <- getHomeDirectory
-  feed <- loadFeed $ home ++ "/.ssb-hs/messages/" ++ prettyPrint i
+  feed' <- loadFeed $ home ++ "/.ssb-hs/messages/" ++ prettyPrint i
+  let feed = (fromJust feed') {identity = i}
   -- Get Input
   putStr "> "
   hFlush stdout
@@ -106,12 +107,15 @@ menu i = do
   putStrLn ""
 
   -- Process Input
-  unless (null input || isNothing feed) $ do
+  unless (null input) $ do
     case head input of
       "help" -> help
       "follow" -> do
         guard (length input >= 2)
-        (follow . fromJust $ feed) (input !! 1)
+        follow feed (input !! 1)
+      "write" -> do
+        guard (length input >= 2)
+        writePost feed (unlines . tail $ input)
       "list" -> do
         list <- listDirectory (home ++ "/.ssb-hs/messages")
         putStrLn "This are the available feeds: "
@@ -124,10 +128,8 @@ menu i = do
     unless (head input == "exit") $ menu i
 
   -- Process empty input
-  when (null input) $ do
-    unless (isNothing feed) $ menu i
-    when (isNothing feed) $
-      putStrLn "Feed error"
+  when (null input) $ menu i
+
 
   --       '3' -> do
   --         putStr "Please enter a file: "
@@ -136,62 +138,50 @@ menu i = do
   --         let decodeContents = (A.decodeStrict :: BS.ByteString -> Maybe (Message BS.ByteString)) contents 
   --         menu id
 
-  --       '4' -> do
-  --         --hSetBuffering stdout LineBuffering
-  --         putStrLn "Type your message: "
-  --         content <- getLine
-  --         time <- getSystemTime
-  --         let time_seconds = toInteger $ systemSeconds time
-  --         let message = Message{SSB.Message.sequence = 0, previous = Nothing, author = id, timestamp = time_seconds, hash = BS.fromString "sha256", content = content, signature = Nothing};
-  --         let verified_mess = signMessage message
-  --         let text_content = T.pack content
-  --         case verified_mess of
-  --           Nothing -> putStrLn "Signature failed"
-  --           Just m -> do
-  --             writeFile (home ++ "/.ssb-hs/messages/"++ "messages.txt") content
-  --             let post = Post{text = text_content, root = Nothing, branch = Nothing, reply = Nothing, channel = Nothing, mentions = Nothing, recps = Nothing}
-  --             let post_mess = Message{SSB.Message.sequence = 0, previous = Nothing, author = id, timestamp = time_seconds, hash = BS.fromString "sha256", content = post, signature = Nothing};
-  --             let verified_post = signMessage post_mess
-  --             case verified_post of
-  --               Nothing -> putStrLn "Post failed"
-  --               Just m -> do
-  --                 writeFile (home ++ "/.ssb-hs/messages/"++ "messages.txt") content
-  --                 putStrLn "Post and message wrote succesfully!"
-  --         return()
-  --       _  -> do
-  --         putStrLn "Por favor anota solo algún numero del menu"
-  --         menu id
-
 help :: IO ()
 help = do
   putStrLn "Available commands:"
   putStrLn "----------"
-  putStrLn "follow [id] \t | Follows another identity"
   putStrLn "list \t\t | Lists all available feeds"
+  putStrLn "follow [id] \t | Follows another identity"
+  putStrLn "write [text] \t | Writes a post [Can't be deleted]"
   putStrLn "exit \t\t | Exits the program"
 
 follow :: Feed -> String -> IO ()
 follow f s = do
-  home <- getHomeDirectory
   let to_follow = fromJust . parseIdentity $ s
-  time <- (`div` 1000) . toInteger . systemNanoseconds <$> getSystemTime
   let c = Contact { contact   = to_follow
                   , following = Just True
                   , blocking = Just False
                   , pub = Nothing
                   , SSB.Message.Contact.name = Nothing}
+  writeMessage f c
+
+writePost :: Feed -> String -> IO ()
+writePost f s = do
+  let c = Post { text = T.pack s
+               , root     = Nothing
+               , branch   = Nothing
+               , reply    = Nothing
+               , channel  = Nothing
+               , mentions = Nothing
+               , recps    = Nothing
+               }
+  writeMessage f c
+
+
+writeMessage :: A.ToJSON a => Feed -> a -> IO ()
+writeMessage f c = do
+  home <- getHomeDirectory
+  time <- messageCurrentTime
   let m = Message { SSB.Message.sequence = 0
                   , previous = Nothing
                   , author = identity f
                   , timestamp = time
                   , hash = BS.fromString "sha256"
                   , content = c
-                  , signature = Nothing}
-
+                  , signature = Nothing
+                  }
   case m `appendTo` f of
-    Just f' -> do
-      writeFeed f' $ home ++ "/.ssb-hs/messages/" ++ (prettyPrint . identity $ f')
-      putStrLn $ "Succesfully followed: " ++ s
+    Just f' -> writeFeed f' $ home ++ "/.ssb-hs/messages/" ++ (prettyPrint . identity $ f')
     Nothing -> putStrLn "Error following"
-
----------------------------------------------------
